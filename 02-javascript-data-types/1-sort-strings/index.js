@@ -6,8 +6,19 @@
  */
 export function sortStrings(arr, param = "asc") {
   const copy = [...arr];
-  const rererse = param === "desc" ? -1 : 1;
+  const reverse = makeReverse(param);
   return copy.sort(
-    (a, b) => rererse * a.localeCompare(b, ["ru", "en"], { caseFirst: "upper" })
+    (a, b) => reverse * a.localeCompare(b, ["ru", "en"], { caseFirst: "upper" })
   );
+}
+
+function makeReverse(param) {
+  switch (param) {
+    case "asc":
+      return 1;
+    case "desc":
+      return -1;
+    default:
+      throw new Error("parametr ${param} not allowed");
+  }
 }
