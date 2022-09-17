@@ -18,6 +18,10 @@ describe('javascript-data-types/sort-strings', () => {
     expect(sortStrings(['b', 'c', 'a'], 'desc')).toEqual(['c', 'b', 'a']);
   });
 
+  it('should throw exception for not allowed param value', () => {
+    expect(() => sortStrings([], 'other')).toThrow();
+  });
+
   it('should correctly sort language-specific characters in "ru" locale', () => {
     expect(sortStrings(['абрикос', 'яблоко', 'ёжик'])).toEqual(['абрикос', 'ёжик', 'яблоко']);
   });
