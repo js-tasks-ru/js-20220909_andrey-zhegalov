@@ -19,6 +19,6 @@ function makeReverse(param) {
     case "desc":
       return -1;
     default:
-      throw new Error("parametr ${param} not allowed");
+      throw new Error(`parametr ${param} not allowed`);
   }
 }
