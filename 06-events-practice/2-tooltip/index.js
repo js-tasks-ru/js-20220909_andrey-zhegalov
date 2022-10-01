@@ -7,15 +7,10 @@ class Tooltip {
     }
 
     Tooltip.instance = this;
+    this.abortController = new AbortController();
   }
 
   initialize() {
-    const result = {};
-    const dataElements = document.querySelectorAll("[data-tooltip]");
-    for (const element of dataElements) {
-      result[element] = element.dataset.tooltip;
-    }
-    this.tooltips = result;
     this.addEventListeners();
   }
 
@@ -27,30 +22,47 @@ class Tooltip {
   }
 
   onPointerMove = (event) => {
-    // TODO move tooltip near mouse here
+    this.moveTooltip(event);
+  };
+
+  moveTooltip(event) {
+    const shift = 10;
+    const left = event.clientX + shift;
+    const top = event.clientY + shift;
+    this.element.style.left = `${left}px`;
+    this.element.style.top = `${top}px`;
   }
 
+  onPointerOver = (event) => {
+    const dataTooltip = event.target.closest("[data-tooltip]");
+    if (!dataTooltip) {
+      return;
+    }
+    this.render(dataTooltip.dataset.tooltip);
+    document.addEventListener(
+      "pointermove",
+      this.onPointerMove,
+      this.abortController.signal
+    );
+  };
+
+  onPointerOut = (event) => {
+    this.remove();
+    document.removeEventListener("pointermove", this.onPointerMove);
+  };
+
   addEventListeners() {
-    document.body.addEventListener("pointerover", (event) => {
-      const div = event.target.closest("div");
-      if (!div) return;
-      const message = div.dataset.tooltip;
-      if (!message) return;
+    document.body.addEventListener(
+      "pointerover",
+      this.onPointerOver,
+      this.abortController.signal
+    );
 
-      this.render(message);
-
-      div.addEventListener("pointermove", this.onPointerMove);
-    });
-
-    document.body.addEventListener("pointerout", (event) => {
-      const div = event.target.closest("div");
-      if (!div) return;
-      const message = div.dataset.tooltip;
-      if (!message) return;
-      this.remove();
-      div.removeEventListener("pointermove", this.onPointerMove);
-    });
-
+    document.body.addEventListener(
+      "pointerout",
+      this.onPointerOut,
+      this.abortController.signal
+    );
   }
 
   getTooltipHtml(message) {
@@ -63,14 +75,12 @@ class Tooltip {
     if (this.element) {
       this.element.remove();
     }
-    document.body.removeEventListener("pointerover", this.onPointerOut);
-    document.body.removeEventListener("pointerout", this.onPointerOut);
   }
 
   destroy() {
+    this.abortController.abort();
     this.remove();
     this.element = null;
-    this.subElements = {};
   }
 }
 
