@@ -2,7 +2,7 @@ export default class SortableTable {
   isSortLocally = false;
   defaultOrder = "desc";
 
-  constructor(headersConfig, { data = [], sorted = {} } = {}) {
+  constructor(headersConfig, {data = [], sorted = {}} = {}) {
     this.headersConfig = headersConfig;
     this.data = data;
     this.currentSortConfig = sorted;
@@ -10,7 +10,7 @@ export default class SortableTable {
     this.render();
   }
 
-  get tempalte() {
+  get template() {
     return `
       <div class="sortable-table">
         <div data-element="header" class="sortable-table__header sortable-table__row">
@@ -29,7 +29,7 @@ export default class SortableTable {
   }
 
   updateBody(data) {
-    const html = data
+    this.subElements.body.innerHTML = data
       .map((rowData) => {
         return `
                 <a class="sortable-table__row">
@@ -38,12 +38,11 @@ export default class SortableTable {
           `;
       })
       .join("");
-    this.subElements.body.innerHTML = html;
   }
 
   makeRowBody(rowData) {
     return this.headersConfig
-      .map(({ template, id }) => {
+      .map(({template, id}) => {
         return template
           ? template(rowData[id])
           : `<div class="sortable-table__cell">${rowData[id]}</div>`;
@@ -52,14 +51,13 @@ export default class SortableTable {
   }
 
   get headerBody() {
-    const result = this.headersConfig
-      .map(({ id, title, sortable }) => {
+    return this.headersConfig
+      .map(({id, title, sortable}) => {
         return `<div class="sortable-table__cell" data-id="${id}" data-sortable="${sortable}">
                       <span>${title}</span>
                     </div>`;
       })
       .join("");
-    return result;
   }
 
   sort(field, type) {
@@ -82,7 +80,7 @@ export default class SortableTable {
     const comparators = {
       string: (a, b) =>
         reverse *
-        a[field].localeCompare(b[field], ["ru", "en"], { caseFirst: "upper" }),
+        a[field].localeCompare(b[field], ["ru", "en"], {caseFirst: "upper"}),
       number: (a, b) => reverse * (a[field] - b[field]),
     };
     const result = comparators[sortType];
@@ -106,18 +104,18 @@ export default class SortableTable {
 
   makeReverse(param) {
     switch (param) {
-      case "asc":
-        return 1;
-      case "desc":
-        return -1;
-      default:
-        throw new Error(`parametr ${param} not allowed`);
+    case "asc":
+      return 1;
+    case "desc":
+      return -1;
+    default:
+      throw new Error(`parametr ${param} not allowed`);
     }
   }
 
   sortTable(sortConfig) {
-    const { id, order } = sortConfig;
-    const { header } = this.subElements;
+    const {id, order} = sortConfig;
+    const {header} = this.subElements;
     header.innerHTML = this.headerBody;
     let sortedHeaderElement;
     for (const item of header.children) {
@@ -146,7 +144,7 @@ export default class SortableTable {
 
   render() {
     const div = document.createElement("div");
-    div.innerHTML = this.tempalte;
+    div.innerHTML = this.template;
     this.element = div.firstElementChild;
     this.subElements = this.getSubElements();
     this.updateBody(this.data);
@@ -162,10 +160,14 @@ export default class SortableTable {
 
   sortTableHandler(event) {
     const headerElement = event.target.closest("div");
-    if (!headerElement) return;
-    if (headerElement.dataset.sortable !== "true") return;
+    if (!headerElement) {
+      return;
+    }
+    if (headerElement.dataset.sortable !== "true") {
+      return;
+    }
     const clickedId = headerElement.dataset.id;
-    const { ...sortConfig } = this.currentSortConfig;
+    const {...sortConfig} = this.currentSortConfig;
     if (clickedId === sortConfig.id) {
       sortConfig.order = this.getNextOrder(sortConfig.order);
     } else {
@@ -176,8 +178,8 @@ export default class SortableTable {
     this.currentSortConfig = sortConfig;
   }
 
-  getNextOrder(currentOrder){
-      return currentOrder === "asc" ? "desc" : "asc";
+  getNextOrder(currentOrder) {
+    return currentOrder === "asc" ? "desc" : "asc";
   }
 
   remove() {
