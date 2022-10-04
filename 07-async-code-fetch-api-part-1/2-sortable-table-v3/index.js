@@ -4,13 +4,15 @@ const BACKEND_URL = 'https://course-js.javascript.ru';
 
 export default class SortableTable {
   defaultOrder = "desc";
+  offset = 0;
 
   constructor(headersConfig,
     {
       url,
       isSortLocally = false,
       data = [],
-      sorted = {}
+      sorted = {},
+      pageSize = 10
     } = {}) {
     this.url = url;
     this.data = data;
@@ -18,17 +20,24 @@ export default class SortableTable {
     this.currentSortConfig = sorted;
     this.isSortLocally = isSortLocally;
     this.abortController = new AbortController();
+    this.pageSize = pageSize;
     this.render();
   }
 
   async sort() {
     const {id, order} = this.currentSortConfig;
     this.updateHeader(id, order);
+    this.resetTable();
     if (this.isSortLocally) {
       this.sortOnClient(id, order);
     } else {
       await this.sortOnServer(id, order);
     }
+  }
+
+  resetTable() {
+    this.subElements.body.innerHTML = '';
+    this.offset = 0;
   }
 
   sortOnClient(id, order) {
@@ -39,10 +48,12 @@ export default class SortableTable {
   }
 
   async sortOnServer(id, order) {
-    const offset = 0;
-    const pageSize = 30;
-    const result = await fetchJson(` ${BACKEND_URL}/${this.url}?_embed=subcategory.category&_sort=${id}&_order=${order}&_start=${offset}&_end=${offset + pageSize} `);
-    this.updateBody(result);
+    const dataFromServer = await this.getDataFromServer(id, order, this.offset, this.pageSize);
+    this.updateBody(dataFromServer);
+  }
+
+  async getDataFromServer(id, order, offset, size) {
+    return fetchJson(` ${BACKEND_URL}/${this.url}?_embed=subcategory.category&_sort=${id}&_order=${order}&_start=${offset}&_end=${offset + size}`);
   }
 
   get template() {
@@ -52,19 +63,23 @@ export default class SortableTable {
           ${this.headerBody}
         </div>
 
-        <div data-element="body" class="sortable-table__body">
-        </div>
+        <div data-element="body" class="sortable-table__body"> </div>
 
         <div data-element="loading" class="loading-line sortable-table__loading-line"></div>
 
         <div data-element="emptyPlaceholder" class="sortable-table__empty-placeholder">
+          <div>
+            <p>No products satisfies your filter criteria</p>
+            <button type="button" class="button-primary-outline">Reset all filters</button>
+          </div>
         </div>
+
       </div>
     `;
   }
 
   updateBody(data) {
-    this.subElements.body.innerHTML = data
+    this.subElements.body.innerHTML += data
       .map((rowData) => {
         return `
                 <a class="sortable-table__row">
@@ -164,6 +179,28 @@ export default class SortableTable {
 
   addEventListeners() {
     this.subElements.header.addEventListener("pointerdown", this.onSortClick);
+    this.subElements.header.addEventListener("pointerdown", event => this.onLoadMoreClick(event));
+  }
+
+  // NOTE temporary decision for event handler
+  onLoadMoreClick(event) {
+    const spanElement = event.target.closest('span');
+    if (!spanElement) {
+      return;
+    }
+    if (spanElement.textContent !== 'Image') {
+      return;
+    }
+    this.onLoadMoreHandler();
+  }
+
+  async onLoadMoreHandler() {
+    this.element.classList.toggle('sortable-table_loading');
+    this.offset += this.pageSize;
+    const {id, order} = this.currentSortConfig;
+    let dataFromServer = await this.getDataFromServer(id, order, this.offset, this.pageSize);
+    this.element.classList.toggle('sortable-table_loading');
+    this.updateBody(dataFromServer);
   }
 
   onSortClick = event => {
