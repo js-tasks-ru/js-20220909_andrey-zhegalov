@@ -1,6 +1,7 @@
 import fetchJson from './utils/fetch-json.js';
 
 const IMGUR_CLIENT_ID = '28aaa2e823b03b1';
+const IMGUR_URL = 'https://api.imgur.com';
 const BACKEND_URL = 'https://course-js.javascript.ru';
 
 export default class ProductForm {
@@ -36,10 +37,13 @@ export default class ProductForm {
 
     this.subElements = this.getSubElements();
 
-    await Promise.all([
-      this.fillCategoriesElement(),
-      this.fillProductDataElement()
+    const [categoriesData, productData] = await Promise.all([
+      this.getCategoriesData(),
+      this.getProductData()
     ]);
+    this.fillCategoriesElement(categoriesData);
+    this.fillProductDataElement(productData);
+    this.currentProductData = productData;
 
     this.addEventListeners();
     return this.element;
@@ -51,25 +55,59 @@ export default class ProductForm {
       this.save,
       this.abortController.signal
     );
+
+    this.element.querySelector('#fileInput').addEventListener(
+      'change',
+      this.onNewImageFile,
+      this.abortController.signal
+    );
+
+    this.element.querySelector('#uploadImage').addEventListener(
+      'pointerdown',
+      () => {
+        const fileInput = this.element.querySelector('#fileInput');
+        fileInput.focus();
+        fileInput.click();
+      },
+      this.abortController.signal
+    );
+
   }
 
-  async fillCategoriesElement() {
+  onNewImageFile = () => {
+    this.onNewImageFileHandler();
+  };
+
+  async onNewImageFileHandler() {
+    const input = this.element.querySelector('#fileInput');
+    const [file] = input.files;
+    const link = await this.uploadImage(file);
+    const name = file.name;
+
+    const imageElement = this.makeImageListItemElement({'url': link, 'source': name});
+    const {imageListContainer} = this.subElements;
+    imageListContainer.firstElementChild.append(imageElement);
+  }
+
+  fillCategoriesElement(categories) {
     const categoriesSelect = this.element.querySelector("#subcategory");
     if (!categoriesSelect) {
       return;
     }
-    const categories = await fetchJson(`${BACKEND_URL}${this.API_PATH}/categories?_sort=weight&_refs=subcategory`,
+    this.makeCategoriesData(categories).forEach(option => categoriesSelect.append(option));
+  }
+
+  async getCategoriesData() {
+    return fetchJson(`${BACKEND_URL}${this.API_PATH}/categories?_sort=weight&_refs=subcategory`,
       {
         signal: this.abortController.signal
       }
     );
-    this.makeCategoriesData(categories).forEach(option => categoriesSelect.append(option));
   }
 
-  async fillProductDataElement() {
-    this.currentProductData = await this.getProductData();
-    this.fillProduct(this.currentProductData);
-    this.fillImage(this.currentProductData.images);
+  fillProductDataElement(productData) {
+    this.fillProduct(productData);
+    this.fillImage(productData.images);
   }
 
   async getProductData() {
@@ -107,27 +145,9 @@ export default class ProductForm {
     const ul = document.createElement('ul');
     ul.classList.add('sortable-list');
     imagesData.map(this.makeImageListItemElement).forEach(item => ul.append(item));
-    imageListContainer.appendChild(ul);
+    imageListContainer.append(ul);
   }
 
-  makeImageListItemElement({url, source}) {
-    const div = document.createElement('div');
-    div.innerHTML = `
-          <li class="products-edit__imagelist-item sortable-list__item" style="">
-            <input type="hidden" name="url" value=${url}>
-            <input type="hidden" name="source" value=${source}">
-            <span>
-              <img src="icon-grab.svg" data-grab-handle="" alt="grab">
-              <img class="sortable-table__cell-img" alt="Image" src=${url}>
-              <span>${source}</span>
-            </span>
-            <button type="button">
-              <img src="icon-trash.svg" data-delete-handle="" alt="delete">
-            </button>
-          </li>
-    `;
-    return div.firstElementChild;
-  }
 
   makeCategoriesData(categoriesData) {
     const names = [];
@@ -141,9 +161,20 @@ export default class ProductForm {
     return names;
   }
 
-  save = async () => {
+  save = async (event) => {
     await this.onSaveEventHandler();
   };
+
+  loadImage = () => {
+    this.onLoadImageHandler();
+  };
+
+  onLoadImageHandler() {
+    const input = this.element.querySelector('#fileInput');
+    const [file] = input.files;
+
+    console.error(file);
+  }
 
   async onSaveEventHandler() {
     const updateBody = this.makeBody();
@@ -192,7 +223,68 @@ export default class ProductForm {
         body[key] = formValue;
       }
     });
+
+    const {imageListContainer} = this.subElements;
+    const images = [];
+    for (const element of imageListContainer.querySelectorAll('li')) {
+      const imageData = this.getImageData(element);
+      images.push(imageData);
+    }
+    body.images = images;
     return body;
+  }
+
+  getImageData(element) {
+    const res = {};
+    for (const input of [...element.querySelectorAll('input')]) {
+      res[input.name] = input.value;
+    }
+    return res;
+  }
+
+  remove() {
+    if (this.element) {
+      this.element.remove();
+    }
+  }
+
+  destroy() {
+    this.abortController.abort();
+    this.remove();
+    this.element = null;
+    this.subElements = null;
+  }
+
+  getSubElements() {
+    const result = {};
+    const elements = this.element.querySelectorAll("[data-element]");
+
+    for (const subElement of elements) {
+      const name = subElement.dataset.element;
+
+      result[name] = subElement;
+    }
+
+    return result;
+  }
+
+  async uploadImage(file) {
+    const formData = new FormData();
+    formData.append('image', file);
+    try {
+      const response = await fetch(`${IMGUR_URL}/3/image`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Client-ID ${IMGUR_CLIENT_ID}`
+        },
+        body: formData,
+        referrer: ''
+      });
+      const body = await response.json();
+      return body.data.link;
+    } catch (error) {
+      return Promise.reject(error);
+    }
   }
 
   getTemplate() {
@@ -213,10 +305,8 @@ export default class ProductForm {
           <div class="form-group form-group__wide" data-element="sortable-list-container">
             <label class="form-label">Фото</label>
             <div data-element="imageListContainer">
-              <ul class="sortable-list">
-              </ul>
             </div>
-            <button type="button" name="uploadImage" class="button-primary-outline"><span>Загрузить</span></button>
+            <button id="uploadImage" name="uploadImage" class="button-primary-outline"><span>Загрузить</span></button>
           </div>
           <div class="form-group form-group__half_left" id="formCategories">
             <label class="form-label">Категория</label>
@@ -249,34 +339,27 @@ export default class ProductForm {
             </button>
           </div>
         </form>
+        <input id="fileInput" type="file" accept="image/*"  >
       </div>
     `;
   }
 
-  remove() {
-    if (this.element) {
-      this.element.remove();
-    }
+  makeImageListItemElement({url, source}) {
+    const div = document.createElement('div');
+    div.innerHTML = `
+          <li class="products-edit__imagelist-item sortable-list__item" style="">
+            <input type="hidden" name="url" value=${url}>
+            <input type="hidden" name="source" value=${source}>
+            <span>
+              <img src="icon-grab.svg" data-grab-handle="" alt="grab">
+              <img class="sortable-table__cell-img" alt="Image" src=${url}>
+              <span>${source}</span>
+            </span>
+            <button type="button">
+              <img src="icon-trash.svg" data-delete-handle="" alt="delete">
+            </button>
+          </li>
+    `;
+    return div.firstElementChild;
   }
-
-  destroy() {
-    this.abortController.abort();
-    this.remove();
-    this.element = null;
-    this.subElements = null;
-  }
-
-  getSubElements() {
-    const result = {};
-    const elements = this.element.querySelectorAll("[data-element]");
-
-    for (const subElement of elements) {
-      const name = subElement.dataset.element;
-
-      result[name] = subElement;
-    }
-
-    return result;
-  }
-
 }
