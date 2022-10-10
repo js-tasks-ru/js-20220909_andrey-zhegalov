@@ -63,9 +63,7 @@ export default class ProductForm {
         signal: this.abortController.signal
       }
     );
-    this.makeCategoriesData(categories)
-      .map(({text, value}) => new Option(text, value))
-      .forEach(option => categoriesSelect.append(option));
+    this.makeCategoriesData(categories).forEach(option => categoriesSelect.append(option));
   }
 
   async fillProductDataElement() {
@@ -78,7 +76,7 @@ export default class ProductForm {
     if (!this.productId) {
       return this.defaultProductData;
     }
-    let url = new URL(`${this.API_PATH}/products`, `${BACKEND_URL}`);
+    const url = new URL(`${this.API_PATH}/products`, `${BACKEND_URL}`);
     url.searchParams.set('id', this.productId);
     const fetchResult = await fetchJson(url,
       {
@@ -108,7 +106,7 @@ export default class ProductForm {
     const {imageListContainer} = this.subElements;
     const ul = document.createElement('ul');
     ul.classList.add('sortable-list');
-    imagesData.map(this.makeImageListItemElement).forEach(item => ul.appendChild(item));
+    imagesData.map(this.makeImageListItemElement).forEach(item => ul.append(item));
     imageListContainer.appendChild(ul);
   }
 
@@ -135,10 +133,9 @@ export default class ProductForm {
     const names = [];
     for (const category of categoriesData) {
       for (const child of category.subcategories) {
-        names.push({
-          text: `${category.title} > ${child.title}`,
-          value: child.id
-        });
+        const text = `${category.title} > ${child.title}`;
+        const value = child.id;
+        names.push(new Option(text, value));
       }
     }
     return names;
@@ -150,10 +147,6 @@ export default class ProductForm {
 
   async onSaveEventHandler() {
     const updateBody = this.makeBody();
-    // todo: test not work with current check
-    // if (Object.keys(updateBody).length === 0) {
-    //   return;
-    // }
     if (this.productId) {
       updateBody['id'] = this.productId;
     }
