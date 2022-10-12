@@ -38,7 +38,6 @@ export default class Page {
   };
 
   onDateSelectHandler(event) {
-    console.error(event);
     const {from, to} = event.detail;
     this.columnChartComponents.forEach(chart => chart.update(from, to));
   }
