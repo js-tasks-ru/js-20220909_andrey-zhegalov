@@ -3,6 +3,7 @@ import fetchJson from '../../../utils/fetch-json.js';
 export default class SortableTable {
   defaultOrder = "desc";
   offset = 0;
+  loading = false;
 
   constructor(headersConfig,
     {
@@ -51,7 +52,11 @@ export default class SortableTable {
   }
 
   async getDataFromServer(id, order, offset, size) {
-    return fetchJson(` ${this.url}?_embed=subcategory.category&_sort=${id}&_order=${order}&_start=${offset}&_end=${offset + size}`);
+    this.url.searchParams.set('_sort', id);
+    this.url.searchParams.set('_order', order);
+    this.url.searchParams.set('_start', offset);
+    this.url.searchParams.set('_end', offset + size);
+    return fetchJson(this.url);
   }
 
   get template() {
@@ -178,19 +183,20 @@ export default class SortableTable {
   addEventListeners() {
     this.subElements.header.addEventListener("pointerdown", this.onSortClick);
     this.subElements.header.addEventListener("pointerdown", event => this.onLoadMoreClick(event));
+    document.addEventListener('scroll', this.onWindowScroll);
   }
 
-  // NOTE temporary decision for event handler
-  onLoadMoreClick(event) {
-    const spanElement = event.target.closest('span');
-    if (!spanElement) {
-      return;
+  onWindowScroll = async () => {
+    const {bottom} = this.element.getBoundingClientRect();
+
+    if (bottom < document.documentElement.clientHeight && !this.loading && !this.isSortLocally) {
+
+      this.loading = true;
+      await this.onLoadMoreHandler();
+
+      this.loading = false;
     }
-    if (spanElement.textContent !== 'Image') {
-      return;
-    }
-    this.onLoadMoreHandler();
-  }
+  };
 
   async onLoadMoreHandler() {
     this.element.classList.toggle('sortable-table_loading');
