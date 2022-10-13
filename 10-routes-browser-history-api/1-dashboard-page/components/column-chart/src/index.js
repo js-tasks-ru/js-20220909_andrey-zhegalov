@@ -1,7 +1,6 @@
 import fetchJson from '../../../utils/fetch-json.js';
 
 const BACKEND_URL = 'https://course-js.javascript.ru';
-const BACKEND_URI = '/api/dashboard';
 
 export default class ColumnChart {
   subElements = {};
@@ -17,7 +16,8 @@ export default class ColumnChart {
         from: new Date(),
         to: new Date(),
       },
-      formatHeading = d => d
+      formatHeading = d => d,
+      url
     } = {}) {
     this.range = range;
     this.data = data;
@@ -25,9 +25,21 @@ export default class ColumnChart {
     this.link = link;
     this.value = formatHeading(value);
     this.formatHeading = formatHeading;
+    this.url = new URL(url, BACKEND_URL);
 
     this.render();
   }
+
+  render() {
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = this.getTemplate();
+    this.element = wrapper.firstElementChild;
+    this.subElements = this.getSubElements();
+    this.renderChart();
+    const {from, to} = this.range;
+    this.update(from, to);
+  }
+
 
   getTemplate() {
     return `
@@ -56,7 +68,9 @@ export default class ColumnChart {
   async update(from, to) {
     this.data = null;
     this.element.classList.add("column-chart_loading");
-    this.data = await fetchJson(`${BACKEND_URL}${BACKEND_URI}/${this.label}?from=${from.toISOString()}&to=${to.toISOString()}`);
+    this.url.searchParams.set('from', from.toISOString());
+    this.url.searchParams.set('to', to.toISOString());
+    this.data = await fetchJson(this.url);
     this.renderHeader();
     this.renderChart();
     this.element.classList.toggle("column-chart_loading");
@@ -69,16 +83,6 @@ export default class ColumnChart {
       value: String(Math.floor(scale * value, 0)),
       dataTooltip: (value / maxValue * 100).toFixed(0),
     };
-  }
-
-  render() {
-    const wrapper = document.createElement('div');
-    wrapper.innerHTML = this.getTemplate();
-    this.element = wrapper.firstElementChild;
-    this.subElements = this.getSubElements();
-    this.renderChart();
-    const {from, to} = this.range;
-    this.update(from, to);
   }
 
   renderChart() {
@@ -115,15 +119,11 @@ export default class ColumnChart {
   }
 
   getSubElements() {
-    const result = {};
     const elements = this.element.querySelectorAll("[data-element]");
+    return [...elements].reduce((accum, subElement) => {
+      accum[subElement.dataset.element] = subElement;
 
-    for (const subElement of elements) {
-      const name = subElement.dataset.element;
-
-      result[name] = subElement;
-    }
-
-    return result;
+      return accum;
+    }, {});
   }
 }
