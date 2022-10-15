@@ -7,6 +7,7 @@ const BACKEND_URL = 'https://course-js.javascript.ru';
 
 export default class Page {
   abortController = new AbortController();
+  startDate = new Date(2022, 9, 1);
 
   render() {
     const div = document.createElement('div');
@@ -34,13 +35,9 @@ export default class Page {
   }
 
   onDateSelect = event => {
-    this.onDateSelectHandler(event);
-  };
-
-  onDateSelectHandler(event) {
     const {from, to} = event.detail;
     this.columnChartComponents.forEach(chart => chart.update(from, to));
-  }
+  };
 
   renderRangePicker() {
     const {rangePicker} = this.subElements;
@@ -85,8 +82,8 @@ export default class Page {
   }
 
   getRange = () => {
-    const now = new Date(2022, 9, 1);
-    const to = new Date(2022, 9, 1);
+    const now = new Date(this.startDate.getTime());
+    const to = new Date(this.startDate.getTime());
     const from = new Date(now.setMonth(now.getMonth() - 1));
 
     return {from, to};
