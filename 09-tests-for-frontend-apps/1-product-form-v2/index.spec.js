@@ -98,7 +98,7 @@ describe('tests-for-frontend-apps/product-form-v2', () => {
     fetchMock
     .once(JSON.stringify({status: 'ok'}));
 
-    await productFormComponent.save();
+    await productFormComponent.save(new CustomEvent(''));
 
     const [event] = spyDispatchEvent.mock.calls;
 
@@ -111,4 +111,3 @@ describe('tests-for-frontend-apps/product-form-v2', () => {
     expect(productFormComponent.element).not.toBeInTheDocument();
   });
 });
-

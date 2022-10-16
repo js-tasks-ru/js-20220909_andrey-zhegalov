@@ -49,20 +49,20 @@ export default class SortableList {
   }
 
   onPointerDown = event => {
-    const grabSpan = event.target.closest('span[data-grab-handle]');
-    if (grabSpan) {
+    const grabElement = event.target.closest('[data-grab-handle]');
+    if (grabElement) {
       event.preventDefault();
       event.ondragstart = () => {
         return false;
       };
-      this.draggingElement = grabSpan.parentElement;
+      this.draggingElement = grabElement.closest('li');
       this.dragStart(event);
       return;
     }
-    const deleteSpan = event.target.closest('span[data-delete-handle]');
-    if (deleteSpan) {
-      const deleteElement = deleteSpan.parentElement;
-      deleteElement.remove();
+    const deleteElement = event.target.closest('[data-delete-handle]');
+    if (deleteElement) {
+      const deletingElement = deleteElement.closest('li');
+      deletingElement.remove();
     }
   };
 
