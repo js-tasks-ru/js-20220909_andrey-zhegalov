@@ -124,7 +124,7 @@ export default class Page {
     this.element = null;
     this.subElements = null;
     this.abortController.abort();
-    this.pageComponents.forEach(component => component.destroy());
+    Object.values(this.pageComponents).forEach(value => value.destroy());
     this.pageComponents = null;
   }
 
