@@ -122,7 +122,6 @@ export default class ColumnChart {
     const elements = this.element.querySelectorAll("[data-element]");
     return [...elements].reduce((accum, subElement) => {
       accum[subElement.dataset.element] = subElement;
-
       return accum;
     }, {});
   }

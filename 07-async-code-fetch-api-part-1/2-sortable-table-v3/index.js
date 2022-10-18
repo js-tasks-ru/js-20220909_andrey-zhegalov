@@ -179,19 +179,6 @@ export default class SortableTable {
 
   addEventListeners() {
     this.subElements.header.addEventListener("pointerdown", this.onSortClick);
-    this.subElements.header.addEventListener("pointerdown", event => this.onLoadMoreClick(event));
-  }
-
-  // NOTE temporary decision for event handler
-  onLoadMoreClick(event) {
-    const spanElement = event.target.closest('span');
-    if (!spanElement) {
-      return;
-    }
-    if (spanElement.textContent !== 'Image') {
-      return;
-    }
-    this.onLoadMoreHandler();
   }
 
   async onLoadMoreHandler() {

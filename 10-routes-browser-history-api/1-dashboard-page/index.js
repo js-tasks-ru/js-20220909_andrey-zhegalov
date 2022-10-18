@@ -7,6 +7,8 @@ const BACKEND_URL = 'https://course-js.javascript.ru';
 
 export default class Page {
   abortController = new AbortController();
+  startDate = new Date(2022, 9, 1);
+  pageComponents = [];
 
   render() {
     const div = document.createElement('div');
@@ -14,10 +16,8 @@ export default class Page {
     this.element = div.firstElementChild;
     this.subElements = this.getSubElements();
 
-    this.renderRangePicker();
-    this.renderColumnCharts();
-    this.renderSortableTable();
-
+    this.createPageComponents();
+    this.renderPageElements();
     this.addEventListeners();
 
     return this.element;
@@ -34,59 +34,55 @@ export default class Page {
   }
 
   onDateSelect = event => {
-    this.onDateSelectHandler(event);
+    const {from, to} = event.detail;
+    this.updateColumnChart(from, to);
   };
 
-  onDateSelectHandler(event) {
-    const {from, to} = event.detail;
-    this.columnChartComponents.forEach(chart => chart.update(from, to));
+  updateColumnChart(from, to) {
+    Object.entries(this.pageComponents)
+      .filter(([name, _chart]) => name.includes("Chart"))
+      .forEach(([_name, chart]) => chart.update(from, to));
   }
 
-  renderRangePicker() {
-    const {rangePicker} = this.subElements;
-
-    const rangePickerElement = new RangePicker(this.getRange());
-    rangePicker.append(rangePickerElement.element);
-  }
-
-  renderColumnCharts() {
-    const {ordersChart, salesChart, customersChart} = this.subElements;
-
-    const ordersChartComponent = new ColumnChart({
+  createPageComponents() {
+    const rangePicker = new RangePicker(this.getRange());
+    const ordersChart = new ColumnChart({
       url: 'api/dashboard/orders',
       label: 'orders',
       range: this.getRange(),
       link: '#'
     });
-    ordersChart.append(ordersChartComponent.element);
-
-    const customersChartElement = new ColumnChart({
+    const customersChart = new ColumnChart({
       url: 'api/dashboard/customers',
       range: this.getRange(),
       label: 'customers',
     });
-    customersChart.append(customersChartElement.element);
-
-    const salesChartComponent = new ColumnChart({
+    const salesChart = new ColumnChart({
       url: 'api/dashboard/sales',
       range: this.getRange(),
       label: 'sales',
       formatHeading: data => `$${data}`
     });
-    salesChart.append(salesChartComponent.element);
-    this.columnChartComponents = [ordersChartComponent, customersChartElement, salesChartComponent];
+
+    const url = new URL('/api/dashboard/bestsellers', BACKEND_URL);
+    const sortableTable = new SortableTable(header, {url});
+
+    this.pageComponents = {rangePicker, ordersChart, customersChart, salesChart, sortableTable};
   }
 
-  renderSortableTable() {
-    const {sortableTable} = this.subElements;
-    const url = new URL('/api/dashboard/bestsellers', BACKEND_URL);
-    const sortableTableComponent = new SortableTable(header, {url});
-    sortableTable.append(sortableTableComponent.element);
+  renderPageElements() {
+    Object.entries(this.pageComponents).forEach(([name, component]) => {
+      const subElement = this.subElements[name];
+      if (!subElement) {
+        return;
+      }
+      subElement.append(component.element);
+    });
   }
 
   getRange = () => {
-    const now = new Date(2022, 9, 1);
-    const to = new Date(2022, 9, 1);
+    const now = new Date(this.startDate.getTime());
+    const to = new Date(this.startDate.getTime());
     const from = new Date(now.setMonth(now.getMonth() - 1));
 
     return {from, to};
@@ -128,19 +124,15 @@ export default class Page {
     this.element = null;
     this.subElements = null;
     this.abortController.abort();
+    Object.values(this.pageComponents).forEach(value => value.destroy());
+    this.pageComponents = null;
   }
 
   getSubElements() {
-    const result = {};
     const elements = this.element.querySelectorAll("[data-element]");
-
-    for (const subElement of elements) {
-      const name = subElement.dataset.element;
-
-      result[name] = subElement;
-    }
-
-    return result;
+    return [...elements].reduce((accum, subElement) => {
+      accum[subElement.dataset.element] = subElement;
+      return accum;
+    }, {});
   }
-
 }

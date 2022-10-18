@@ -203,16 +203,11 @@ export default class RangePicker {
   }
 
   getSubElements() {
-    const result = {};
     const elements = this.element.querySelectorAll("[data-element]");
-
-    for (const subElement of elements) {
-      const name = subElement.dataset.element;
-
-      result[name] = subElement;
-    }
-
-    return result;
+    return [...elements].reduce((accum, subElement) => {
+      accum[subElement.dataset.element] = subElement;
+      return accum;
+    }, {});
   }
 
   makeCalendarElement(year, month) {
